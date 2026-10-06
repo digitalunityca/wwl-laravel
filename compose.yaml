@@ -1,0 +1,33 @@
+name: wwl
+services:
+  app:
+    build:
+      context: .
+      args:
+        WWWUSER: ${WWWUSER:-501}
+    image: wwl-app:local
+    ports:
+      - "127.0.0.1:${APP_PORT:-8098}:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - mailpit
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  queue:
+    image: wwl-app:local
+    user: "${WWWUSER:-501}:20"
+    command: php artisan queue:work --sleep=1 --tries=3 --timeout=60
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+  mailpit:
+    image: axllent/mailpit:v1.29
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8028}:8025"
