@@ -1,7 +1,7 @@
 <div class="contact-form">
     @if ($submitted)
         <div class="contact-thanks" role="status" tabindex="-1" x-init="$el.focus()">
-            <svg class="success-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2"/><path d="m14 24 7 7 14-15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="48" height="48" class="success-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2"/><path d="m14 24 7 7 14-15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <h3>Thank you for reaching out.</h3>
             <p>Your message is on its way to our team. We’ll be in touch to talk about what’s next.</p>
         </div>
