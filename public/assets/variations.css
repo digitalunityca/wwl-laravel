@@ -28,3 +28,11 @@
 .process-graphic{display:block;width:120px;height:96px;color:#344fb0;margin-bottom:28px}
 .graphic-accent{fill:#eba633;stroke:#eba633}
 @media(max-width:650px){.service-title{gap:14px}.service-icon{width:26px;height:26px;flex-basis:26px}.process-graphic{width:90px;height:72px;margin-bottom:18px}}
+
+.technology-logos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 24px}
+.technology-logos>span{display:flex;align-items:center;gap:12px;font-size:19px;color:#1d3055}
+.technology-logos img{display:block;width:36px;height:36px;object-fit:contain;flex-shrink:0}
+@media(max-width:1000px){.technology-logos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:400px){.technology-logos>span{font-size:16px;gap:10px}.technology-logos img{width:30px;height:30px}}
+
+.tool-tags>span{display:inline-flex;align-items:center;gap:8px}.tool-tags img{width:20px;height:20px;object-fit:contain;flex-shrink:0}
