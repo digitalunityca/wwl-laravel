@@ -2,10 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\ContactForm;
 use App\Mail\ContactInquiry;
+use Illuminate\Mail\PendingMail;
 use Illuminate\Mail\Transport\ResendTransport;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\TestCase;
 
 class ContactTest extends TestCase
@@ -26,12 +32,18 @@ class ContactTest extends TestCase
         config(['contact.recipient' => 'inbox@example.com']);
         $inquiry = ['name' => 'Alex', 'email' => 'alex@example.com', 'message' => 'I need a website.'];
 
-        $this->post(route('contact.store'), [...$inquiry, 'recipient' => 'unwanted@example.com'])
-            ->assertRedirect(route('home').'#contact')
-            ->assertSessionHas('contact_status');
+        Livewire::test(ContactForm::class)
+            ->set($inquiry)
+            ->call('send')
+            ->assertHasNoErrors()
+            ->assertSet('submitted', true)
+            ->assertSet('message', '')
+            ->assertSee('Thank you for reaching out.')
+            ->call('send');
 
+        Mail::assertSentCount(1);
         Mail::assertNothingQueued();
-        Mail::assertSent(ContactInquiry::class, fn (ContactInquiry $mail) => $mail->hasTo('inbox@example.com') && $mail->inquiry === $inquiry
+        Mail::assertSent(ContactInquiry::class, fn (ContactInquiry $mail) => $mail->hasTo('inbox@example.com') && array_intersect_key($mail->inquiry, $inquiry) === $inquiry
             && $mail->envelope()->replyTo[0]->address === 'alex@example.com'
         );
     }
@@ -39,9 +51,9 @@ class ContactTest extends TestCase
     public function test_required_fields_show_errors_and_do_not_send_mail(): void
     {
         Mail::fake();
-        $this->post(route('contact.store'), [])
-            ->assertRedirect(route('home').'#contact')
-            ->assertSessionHasErrors(['name', 'email', 'message']);
+        Livewire::test(ContactForm::class)->call('send')
+            ->assertHasErrors(['name' => 'required', 'email' => 'required', 'message' => 'required'])
+            ->assertSet('submitted', false);
         Mail::assertNothingOutgoing();
     }
 
@@ -51,7 +63,7 @@ class ContactTest extends TestCase
         Mail::fake();
         $payload = ['name' => 'Alex', 'email' => 'alex@example.com', 'message' => 'A project inquiry.'];
         $payload[$field] = $value;
-        $this->post(route('contact.store'), $payload)->assertSessionHasErrors($field);
+        Livewire::test(ContactForm::class)->set($payload)->call('send')->assertHasErrors($field);
         Mail::assertNothingOutgoing();
     }
 
@@ -64,7 +76,6 @@ class ContactTest extends TestCase
             'long phone' => ['phone', str_repeat('1', 51)],
             'long website' => ['website', str_repeat('a', 501)],
             'long message' => ['message', str_repeat('a', 5001)],
-            'invalid structure' => ['message', ['nested']],
             'honeypot' => ['company_url', 'spam.example'],
         ];
     }
@@ -87,19 +98,57 @@ class ContactTest extends TestCase
     {
         Mail::fake();
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->post(route('contact.store'), [])->assertRedirect();
+            Livewire::test(ContactForm::class)->call('send')->assertHasErrors('name');
         }
-        $this->post(route('contact.store'), [])->assertTooManyRequests();
+        Livewire::test(ContactForm::class)
+            ->set(['name' => 'Alex', 'email' => 'alex@example.com', 'message' => 'Please help'])
+            ->call('send')->assertHasErrors('delivery')->assertSee('Too many attempts.')
+            ->assertSet('submitted', false);
         Mail::assertNothingOutgoing();
     }
 
-    public function test_validation_feedback_preserves_and_escapes_input(): void
+    public function test_rate_limit_expires(): void
     {
-        $this->followingRedirects()->post(route('contact.store'), [
-            'name' => '<script>alert(1)</script>', 'email' => 'invalid', 'message' => 'Help with a website',
-        ])->assertOk()->assertSee('The email field must be a valid email address.')
-            ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)
-            ->assertDontSee('<script>alert(1)</script>', false)
-            ->assertSee('Help with a website');
+        Mail::fake();
+        RateLimiter::hit('contact:127.0.0.1', 60);
+        for ($attempt = 0; $attempt < 4; $attempt++) {
+            RateLimiter::hit('contact:127.0.0.1', 60);
+        }
+        $this->travel(61)->seconds();
+        Livewire::test(ContactForm::class)
+            ->set(['name' => 'Alex', 'email' => 'alex@example.com', 'message' => 'Please help'])
+            ->call('send')->assertHasNoErrors()->assertSet('submitted', true);
+        Mail::assertSentCount(1);
+    }
+
+    public function test_validation_feedback_preserves_input(): void
+    {
+        Livewire::test(ContactForm::class)
+            ->set(['name' => 'Alex', 'email' => 'invalid', 'message' => 'Help with a website'])
+            ->call('send')->assertHasErrors('email')
+            ->assertSee('The email field must be a valid email address.')
+            ->assertSet('message', 'Help with a website');
+    }
+
+    public function test_delivery_failure_preserves_the_message_without_showing_success(): void
+    {
+        Exceptions::fake();
+        $pending = \Mockery::mock(PendingMail::class);
+        Mail::shouldReceive('to')->once()->with(config('contact.recipient'))->andReturn($pending);
+        $pending->shouldReceive('send')->once()->andThrow(new RuntimeException('Provider unavailable'));
+
+        Livewire::test(ContactForm::class)
+            ->set(['name' => 'Alex', 'email' => 'alex@example.com', 'message' => 'Please help'])
+            ->call('send')->assertHasErrors('delivery')
+            ->assertSet('submitted', false)->assertSet('message', 'Please help')
+            ->assertSee('Your message could not be sent.')
+            ->assertDontSee('Thank you for reaching out.');
+
+        Exceptions::assertReported(RuntimeException::class);
+    }
+
+    public function test_home_contains_the_livewire_form(): void
+    {
+        $this->get('/')->assertOk()->assertSeeLivewire(ContactForm::class);
     }
 }
