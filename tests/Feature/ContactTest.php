@@ -3,13 +3,24 @@
 namespace Tests\Feature;
 
 use App\Mail\ContactInquiry;
+use Illuminate\Mail\Transport\ResendTransport;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ContactTest extends TestCase
 {
-    public function test_valid_inquiry_is_queued_to_the_configured_recipient(): void
+    public function test_resend_mailer_can_be_constructed_with_the_configured_key(): void
+    {
+        config(['services.resend.key' => 're_local_test_placeholder']);
+
+        $this->assertInstanceOf(
+            ResendTransport::class,
+            Mail::mailer('resend')->getSymfonyTransport(),
+        );
+    }
+
+    public function test_valid_inquiry_is_sent_to_the_configured_recipient(): void
     {
         Mail::fake();
         config(['contact.recipient' => 'inbox@example.com']);
@@ -19,18 +30,19 @@ class ContactTest extends TestCase
             ->assertRedirect(route('home').'#contact')
             ->assertSessionHas('contact_status');
 
-        Mail::assertQueued(ContactInquiry::class, fn (ContactInquiry $mail) => $mail->hasTo('inbox@example.com') && $mail->inquiry === $inquiry
+        Mail::assertNothingQueued();
+        Mail::assertSent(ContactInquiry::class, fn (ContactInquiry $mail) => $mail->hasTo('inbox@example.com') && $mail->inquiry === $inquiry
             && $mail->envelope()->replyTo[0]->address === 'alex@example.com'
         );
     }
 
-    public function test_required_fields_show_errors_and_do_not_queue_mail(): void
+    public function test_required_fields_show_errors_and_do_not_send_mail(): void
     {
         Mail::fake();
         $this->post(route('contact.store'), [])
             ->assertRedirect(route('home').'#contact')
             ->assertSessionHasErrors(['name', 'email', 'message']);
-        Mail::assertNothingQueued();
+        Mail::assertNothingOutgoing();
     }
 
     #[DataProvider('invalidFields')]
@@ -40,7 +52,7 @@ class ContactTest extends TestCase
         $payload = ['name' => 'Alex', 'email' => 'alex@example.com', 'message' => 'A project inquiry.'];
         $payload[$field] = $value;
         $this->post(route('contact.store'), $payload)->assertSessionHasErrors($field);
-        Mail::assertNothingQueued();
+        Mail::assertNothingOutgoing();
     }
 
     public static function invalidFields(): array
@@ -78,7 +90,7 @@ class ContactTest extends TestCase
             $this->post(route('contact.store'), [])->assertRedirect();
         }
         $this->post(route('contact.store'), [])->assertTooManyRequests();
-        Mail::assertNothingQueued();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_validation_feedback_preserves_and_escapes_input(): void

@@ -11,7 +11,7 @@ class ContactController extends Controller
 {
     public function __invoke(StoreContactRequest $request): RedirectResponse
     {
-        Mail::to(config('contact.recipient'))->queue(new ContactInquiry(
+        Mail::to(config('contact.recipient'))->send(new ContactInquiry(
             $request->safe()->only(['name', 'email', 'phone', 'website', 'message'])
         ));
 
