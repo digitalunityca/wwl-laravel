@@ -21,3 +21,10 @@
 @media(max-width:700px){.error-main{grid-template-columns:1fr;gap:36px;padding-top:40px;padding-bottom:50px}.error-code{grid-row:1;font-size:130px;padding:28px 20px}.error-page .header{gap:20px}.error-copy p{font-size:17px}}
 .error-page .header{width:100%}
 .error-page .button{border-radius:6px}
+
+/* Technical motifs inherit the site's blue palette. */
+.service-title{display:flex;align-items:center;gap:22px;min-width:0}
+.service-icon{width:32px;height:32px;flex:0 0 32px;color:#344fb0}
+.process-graphic{display:block;width:120px;height:96px;color:#344fb0;margin-bottom:28px}
+.graphic-accent{fill:#eba633;stroke:#eba633}
+@media(max-width:650px){.service-title{gap:14px}.service-icon{width:26px;height:26px;flex-basis:26px}.process-graphic{width:90px;height:72px;margin-bottom:18px}}
