@@ -36,3 +36,18 @@
 @media(max-width:400px){.technology-logos>span{font-size:16px;gap:10px}.technology-logos img{width:30px;height:30px}}
 
 .tool-tags>span{display:inline-flex;align-items:center;gap:8px}.tool-tags img{width:20px;height:20px;object-fit:contain;flex-shrink:0}
+
+.menu-toggle{display:none}
+@media(max-width:700px){
+    .variation-c .header{height:auto;min-height:86px;flex-wrap:wrap;position:relative;padding-top:18px;padding-bottom:18px;gap:0}
+    .header #main-navigation{width:100%;flex-direction:column;align-items:stretch;gap:0;padding-top:14px}
+    .header #main-navigation>a{display:block;padding:14px 4px;min-height:48px;font-size:16px;border-bottom:1px solid #e0e8f5}
+    .header #main-navigation>a:last-child{border-bottom:0;color:#244caf}
+    .header[data-menu-ready] #main-navigation{display:none}
+    .header[data-menu-ready].menu-open #main-navigation{display:flex}
+    .header .menu-toggle:not([hidden]){display:flex;align-items:center;justify-content:center;width:48px;height:48px;margin-left:auto;border:1px solid #d7e1f1;border-radius:6px;background:#fff;color:#1d3055;cursor:pointer}
+    .menu-toggle:focus-visible{outline:2px solid #315acb;outline-offset:3px}
+    .menu-open .menu-line-top{transform:translateY(5px) rotate(45deg);transform-origin:12px 7px}
+    .menu-open .menu-line-middle{opacity:0}
+    .menu-open .menu-line-bottom{transform:translateY(-5px) rotate(-45deg);transform-origin:12px 17px}
+}
